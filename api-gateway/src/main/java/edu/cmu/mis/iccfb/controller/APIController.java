@@ -12,9 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
-
 import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -24,6 +21,9 @@ import org.springframework.http.HttpMethod;
 
 import java.util.*;
 
+
+import edu.cmu.mis.iccfb.service.RandomService;
+
 import edu.cmu.mis.iccfb.model.Author;
 import edu.cmu.mis.iccfb.model.Quote;
 import edu.cmu.mis.iccfb.model.QuoteFormat;
@@ -31,14 +31,17 @@ import edu.cmu.mis.iccfb.model.AuthorFormat;
 
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 
-
+@EnableCircuitBreaker
 @RestController
 public class APIController {
 
 	
+    @Autowired
+	  private RandomService randomService;
+	  
     @LoadBalanced
     @Autowired
     private RestTemplate QuoterestTemplate;
@@ -52,10 +55,6 @@ public class APIController {
     
     String AuthorUrl = "http://author-service";
        
-
-    @Autowired
-    private DiscoveryClient discoveryClient;
-    
 	//port 8070
 //   @Value("${Quote_URL}")
 
@@ -70,53 +69,58 @@ public class APIController {
     //     return quoteService.randomQuote();
     // }
 
+   
     @RequestMapping("/api/quote/randomquote")
     public QuoteFormat random() {
-//      RestTemplate restTemplate = new RestTemplate();
-      String fooResourceUrl = quoteurl+"/quote/randomquote";
-        
-//      System.out.println("disocver quote service");
+    		return randomService.random();
+    } 
+    
+//    @RequestMapping("/api/quote/randomquote")
+//    public QuoteFormat random() {
+////      RestTemplate restTemplate = new RestTemplate();
+//      String fooResourceUrl = quoteurl+"/quote/randomquote";
+//        
+////      System.out.println("disocver quote service");
+////
+////      discoveryClient.getInstances("quote-service").forEach((ServiceInstance s) -> {
+////          System.out.println(ToStringBuilder.reflectionToString(s));
+////      });
+////   
+////      discoveryClient.getInstances("author-service").forEach((ServiceInstance s) -> {
+////          System.out.println(ToStringBuilder.reflectionToString(s));
+////      });
+//      
+//      // ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
+//      // System.out.println(response.getStatusCode());
+//      // String body = response.getBody();
+//      Quote response = QuoterestTemplate.getForObject(QuoteUrl+"/quote/randomquote",Quote.class);
+//      
+////      Quote response = restTemplate.getForObject(fooResourceUrl, Quote.class);
+//    //  System.out.println(response);
+//      
+//      String text = response.getText();
+//      String source = response.getSource();
+//      Long authorId = response.getAuthorId();
 //
-//      discoveryClient.getInstances("quote-service").forEach((ServiceInstance s) -> {
-//          System.out.println(ToStringBuilder.reflectionToString(s));
-//      });
-//   
-//      discoveryClient.getInstances("author-service").forEach((ServiceInstance s) -> {
-//          System.out.println(ToStringBuilder.reflectionToString(s));
-//      });
-      
-      // ResponseEntity<String> response = restTemplate.getForEntity(fooResourceUrl, String.class);
-      // System.out.println(response.getStatusCode());
-      // String body = response.getBody();
-      System.out.println("asdas");
-      Quote response = QuoterestTemplate.getForObject(QuoteUrl+"/quote/randomquote",Quote.class);
-      
-//      Quote response = restTemplate.getForObject(fooResourceUrl, Quote.class);
-    //  System.out.println(response);
-      
-      String text = response.getText();
-      String source = response.getSource();
-      Long authorId = response.getAuthorId();
-
-      
-      
-//      RestTemplate Template = new RestTemplate();
-      String Url = authorurl+ "/author/" + Long.toString(authorId) ;
-
-//      Author author = Template.getForObject(Url, Author.class);
-      //System.out.println(author);
-      
-      Author author = AuthorrestTemplate.getForObject(AuthorUrl+"/author/"+Long.toString(authorId) , Author.class);
-
-      Long id = author.getId();
-      String name = author.getName();
-
-      AuthorFormat new_author = new AuthorFormat(name);
-      new_author.setId(id);
-      QuoteFormat quote = new QuoteFormat(text,source,new_author);
-      //System.out.println(quote);
-      return quote;
-    }
+//      
+//      
+////      RestTemplate Template = new RestTemplate();
+//      String Url = authorurl+ "/author/" + Long.toString(authorId) ;
+//
+////      Author author = Template.getForObject(Url, Author.class);
+//      //System.out.println(author);
+//      
+//      Author author = AuthorrestTemplate.getForObject(AuthorUrl+"/author/"+Long.toString(authorId) , Author.class);
+//
+//      Long id = author.getId();
+//      String name = author.getName();
+//
+//      AuthorFormat new_author = new AuthorFormat(name);
+//      new_author.setId(id);
+//      QuoteFormat quote = new QuoteFormat(text,source,new_author);
+//      //System.out.println(quote);
+//      return quote;
+//    }
 
 
     @RequestMapping( value = "/api/quotes/{id}" , method = RequestMethod.GET)
@@ -160,21 +164,16 @@ public class APIController {
         String source = quote.getSource();
 
         System.out.println("add quote");
-        // send to author service
+
 //        RestTemplate restTemplate = new RestTemplate();
         String fooResourceUrl = AuthorUrl+"/authorname/" + name;
         Author response = AuthorrestTemplate.getForObject(fooResourceUrl, Author.class);
 
         Quote new_quote = new Quote(text,source,response.getId(),1L);
-
-        //System.out.println("breank here");
-
         // send to quote service
 
 //        RestTemplate Template = new RestTemplate();
-        System.out.println("add quote 555\n");
-        
-      //  System.out.println("ka le");
+
         String Url = QuoteUrl+ "/addquote";
         HttpEntity<Quote> request = new HttpEntity<Quote>(new_quote);
         ResponseEntity<Quote> post_quote = QuoterestTemplate.exchange(Url, HttpMethod.POST,request, Quote.class);
